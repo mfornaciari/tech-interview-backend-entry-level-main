@@ -97,6 +97,11 @@ GEM
     et-orbi (1.2.11)
       tzinfo
     eventmachine (1.2.7)
+    factory_bot (6.5.1)
+      activesupport (>= 6.1.0)
+    factory_bot_rails (6.4.4)
+      factory_bot (~> 6.5)
+      railties (>= 5.0.0)
     ffi (1.17.0-aarch64-linux-gnu)
     ffi (1.17.0-arm-linux-gnu)
     ffi (1.17.0-arm64-darwin)
@@ -287,6 +292,7 @@ PLATFORMS
 DEPENDENCIES
   bootsnap
   debug
+  factory_bot_rails
   guard
   guard-livereload
   pg (~> 1.1)
