@@ -23,3 +23,5 @@ end
 
 group :development do
 end
+
+gem "devise", "~> 4.9"
