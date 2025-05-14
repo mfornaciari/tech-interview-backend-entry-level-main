@@ -7,11 +7,7 @@ class Cart < ApplicationRecord
 
   def add_item(product_id:, quantity:)
     item = cart_items.find_or_initialize_by(product_id: product_id)
-    if item.quantity.present?
-      item.quantity += quantity
-    else
-      item.quantity = quantity
-    end
+    item.quantity = item.quantity.present? ? item.quantity + quantity : quantity
     item.save
     item
   end
