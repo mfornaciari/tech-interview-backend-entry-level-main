@@ -16,6 +16,16 @@ services:
       - 6379:6379
     volumes:
       - redis_data:/data
+  sidekiq:
+    build: .
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    volumes:
+      - sidekiq_bundle_cache:/usr/local/bundle
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      - REDIS_URL=redis://redis:6379/0
   web:
     build: .
     volumes:
@@ -23,10 +33,11 @@ services:
     depends_on:
       db:
         condition: service_started
-      redis:
+      sidekiq:
         condition: service_started
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/store_test
+      - DATABASE_URL=postgresql://postgres:password@db:5432/store_development
+      - REDIS_URL=redis://redis:6379/0
     ports:
       - 3000:3000
   test:
@@ -37,12 +48,11 @@ services:
     depends_on:
       db:
         condition: service_started
-      redis:
-        condition: service_started
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/store_test
-      - REDIS_URL=redis://redis:6379/0
+      - RAILS_ENV=test
 volumes:
   postgres13:
   redis_data:
   rubygems:
+  sidekiq_bundle_cache:
