@@ -1,13 +1,5 @@
 {
   id: cart.id,
-  products: cart.cart_items.map do |cart_item|
-    {
-      id: cart_item.product.id,
-      name: cart_item.product.name,
-      quantity: cart_item.quantity,
-      unit_price: cart_item.product.price,
-      total_price: cart_item.total_price
-    }
-  end,
+  products: cart.cart_items.map { |cart_item| render 'cart_item', item: cart_item },
   total_price: cart.total_price
 }
