@@ -70,4 +70,34 @@ RSpec.describe Cart, type: :model do
       expect { shopping_cart.remove_if_abandoned }.to change { Cart.count }.by(-1)
     end
   end
+
+  describe '#remove_product' do
+    subject(:remove_product) { cart.remove_product(product.id) }
+
+    let(:cart) { create(:shopping_cart) }
+    let(:product) { create(:product) }
+
+    context 'when given product ID matches the product_id of an associated cart item' do
+      let!(:cart_item) { create(:cart_item, cart: cart, product: product) }
+
+      it 'removes cart item and returns true' do
+        result = remove_product
+
+        expect(result).to be true
+        expect(cart.cart_items).to be_empty
+      end
+    end
+
+    context 'when given product ID does not match the product_id of any associated cart item' do
+      let(:other_product) { create(:product, name: 'Other product') }
+      let!(:cart_item) { create(:cart_item, cart: cart, product: other_product) }
+
+      it 'does not change cart items and returns false' do
+        result = remove_product
+
+        expect(result).to be false
+        expect(cart.cart_items).to contain_exactly(cart_item)
+      end
+    end
+  end
 end

@@ -104,6 +104,34 @@ RSpec.describe "/carts", type: :request do
     end
   end
 
+  describe "DELETE /cart/:product_id" do
+    subject(:delete_request) do
+      sign_in user
+      delete "/cart/#{product.id}", as: :json
+    end
+
+    let(:user) { create(:user) }
+    let(:cart) { create(:shopping_cart, user: user) }
+
+    context 'when the product is in the cart' do
+      let(:product) { create(:product) }
+      let!(:cart_item) { create(:cart_item, cart: cart, product: product, quantity: 2) }
+
+      it 'removes product from cart and returns correct response' do
+        expected_response = {
+          id: cart.id,
+          products: [],
+          total_price: '0.0'
+        }.to_json
+
+        delete_request
+
+        expect(cart.reload.cart_items).to be_empty
+        expect(response.body).to eq(expected_response)
+      end
+    end
+  end
+
   # Apesar das instruções solicitarem a não alteração de testes existentes, foi necessário alterar o teste abaixo,
   # visto que 1) as instruções indicam que a rota deve se chamar "/cart/add_item", não "/cart/add_items" e
   # 2) as instruções indicam que o carrinho é identificado por sessão, mas as requisições não têm dados de sessão.
@@ -150,7 +178,7 @@ RSpec.describe "/carts", type: :request do
     context 'when the product is not in the cart' do
       let(:new_product) { create(:product, name: "Other Test Product") }
 
-      subject do
+      subject(:post_request) do
         sign_in cart.user
         post '/cart/add_item', params: { product_id: new_product.id, quantity: 2 }, as: :json
       end
@@ -177,7 +205,7 @@ RSpec.describe "/carts", type: :request do
           total_price: product.price + (new_product.price * 2)
         }.to_json
 
-        subject
+        post_request
 
         expect(cart.cart_items).to contain_exactly(
           an_object_having_attributes(**cart_item.attributes),

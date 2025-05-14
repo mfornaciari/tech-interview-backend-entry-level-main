@@ -3,6 +3,7 @@ class CartItem < ApplicationRecord
   belongs_to :product
 
   after_save :update_cart_total_price!
+  after_destroy :update_cart_total_price!
 
   def total_price
     product.price * quantity

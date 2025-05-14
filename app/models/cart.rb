@@ -24,6 +24,14 @@ class Cart < ApplicationRecord
     destroy
   end
 
+  def remove_product(id)
+    item = cart_items.find_by(product_id: id)
+    return false if item.nil?
+
+    item.destroy
+    true
+  end
+
   def update_total_price!
     update!(total_price: cart_items.reload.sum(&:total_price))
   end
