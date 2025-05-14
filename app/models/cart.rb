@@ -8,7 +8,10 @@ class Cart < ApplicationRecord
   def add_item(product_id:, quantity:)
     item = cart_items.find_or_initialize_by(product_id: product_id)
     item.quantity = item.quantity.present? ? item.quantity + quantity : quantity
-    item.save
+    transaction do
+      item.save!
+      update!(total_price: cart_items.sum(&:total_price))
+    end
     item
   end
 

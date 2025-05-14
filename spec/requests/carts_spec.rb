@@ -1,6 +1,69 @@
 require 'rails_helper'
 
 RSpec.describe "/carts", type: :request do
+  describe 'POST /cart' do
+    subject(:post_request) do
+      sign_in user
+      post '/cart', params: params, as: :json
+    end
+
+    let(:user) { create(:user) }
+    let(:params) { { product_id: product.id, quantity: 2 } }
+    let(:product) { create(:product) }
+
+    context 'when the cart does not exist' do
+      it 'creates cart and returns correct response' do
+        post_request
+
+        expected_response = {
+          id: user.reload.cart.id,
+          products: [
+            {
+              id: product.id,
+              name: product.name,
+              quantity: 2,
+              unit_price: product.price,
+              total_price: product.price * 2
+            }
+          ],
+          total_price: product.price * 2
+        }.to_json
+        expect(user.cart).to be_persisted
+        expect(user.cart.cart_items).to contain_exactly(an_object_having_attributes(**params))
+        expect(response.body).to eq(expected_response)
+      end
+    end
+
+    context 'when the cart already exists' do
+      before do
+        cart = create(:shopping_cart, user: user)
+        create(:cart_item, cart: cart, product: product, quantity: 1)
+      end
+
+      it 'updates cart item and returns correct response' do
+        post_request
+
+        expected_response = {
+          id: user.cart.id,
+          products: [
+            {
+              id: product.id,
+              name: product.name,
+              quantity: 3,
+              unit_price: product.price,
+              total_price: product.price * 3
+            }
+          ],
+          total_price: product.price * 3
+        }.to_json
+        expect(user.cart).to be_persisted
+        expect(user.cart.cart_items)
+          .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
+        expect(response.body).to eq(expected_response)
+      end
+    end
+  end
+
   # Apesar das instruções solicitarem a não alteração de testes existentes, foi necessário alterar o teste abaixo,
   # visto que 1) as instruções indicam que a rota deve se chamar "/cart/add_item", não "/cart/add_items" e
   # 2) as instruções indicam que o carrinho é identificado por sessão, mas as requisições não têm dados de sessão.
@@ -40,7 +103,7 @@ RSpec.describe "/carts", type: :request do
         sign_in cart.user
         post '/cart/add_item', params: { product_id: product.id, quantity: 2 }, as: :json
 
-        expect(response.body).to eq expected_response
+        expect(response.body).to eq(expected_response)
       end
     end
 
@@ -80,7 +143,7 @@ RSpec.describe "/carts", type: :request do
           an_object_having_attributes(**cart_item.attributes),
           an_object_having_attributes(product_id: new_product.id, quantity: 2)
         )
-        expect(response.body).to eq expected_response
+        expect(response.body).to eq(expected_response)
       end
     end
   end
