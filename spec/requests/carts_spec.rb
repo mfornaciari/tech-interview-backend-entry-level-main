@@ -1,6 +1,47 @@
 require 'rails_helper'
 
 RSpec.describe "/carts", type: :request do
+  describe 'GET /cart' do
+    subject(:get_request) do
+      sign_in user
+      get '/cart', as: :json
+    end
+
+    let(:user) { create(:user) }
+    let(:cart) { create(:shopping_cart, user: user) }
+    let!(:cart_item1) { create(:cart_item, cart: cart, product: product1, quantity: 2) }
+    let!(:cart_item2) { create(:cart_item, cart: cart, product: product2, quantity: 3) }
+    let(:product1) { create(:product, name: 'Product', price: 5.0) }
+    let(:product2) { create(:product, name: 'Other product', price: 10.0) }
+
+    it 'returns correct response' do
+      expected_response = {
+        id: cart.id,
+        products: [
+          {
+            id: product1.id,
+            name: 'Product',
+            quantity: 2,
+            unit_price: '5.0',
+            total_price: '10.0'
+          },
+          {
+            id: product2.id,
+            name: 'Other product',
+            quantity: 3,
+            unit_price: '10.0',
+            total_price: '30.0'
+          },
+        ],
+        total_price: '40.0'
+      }.to_json
+
+      get_request
+
+      expect(response.body).to eq expected_response
+    end
+  end
+
   describe 'POST /cart' do
     subject(:post_request) do
       sign_in user
@@ -16,7 +57,7 @@ RSpec.describe "/carts", type: :request do
         post_request
 
         expected_response = {
-          id: user.reload.cart.id,
+          id: user.cart.id,
           products: [
             {
               id: product.id,
@@ -35,16 +76,15 @@ RSpec.describe "/carts", type: :request do
     end
 
     context 'when the cart already exists' do
-      before do
-        cart = create(:shopping_cart, user: user)
-        create(:cart_item, cart: cart, product: product, quantity: 1)
-      end
+      let(:cart) { create(:shopping_cart, user: user) }
+
+      before { create(:cart_item, cart: cart, product: product, quantity: 1) }
 
       it 'updates cart item and returns correct response' do
         post_request
 
         expected_response = {
-          id: user.cart.id,
+          id: cart.id,
           products: [
             {
               id: product.id,
@@ -139,7 +179,7 @@ RSpec.describe "/carts", type: :request do
 
         subject
 
-        expect(cart.reload.cart_items).to contain_exactly(
+        expect(cart.cart_items).to contain_exactly(
           an_object_having_attributes(**cart_item.attributes),
           an_object_having_attributes(product_id: new_product.id, quantity: 2)
         )

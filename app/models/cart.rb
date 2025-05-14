@@ -8,10 +8,7 @@ class Cart < ApplicationRecord
   def add_item(product_id:, quantity:)
     item = cart_items.find_or_initialize_by(product_id: product_id)
     item.quantity = item.quantity.present? ? item.quantity + quantity : quantity
-    transaction do
-      item.save!
-      update!(total_price: cart_items.sum(&:total_price))
-    end
+    item.save!
     item
   end
 
@@ -25,5 +22,9 @@ class Cart < ApplicationRecord
     return if last_interaction_at > 7.days.ago
 
     destroy
+  end
+
+  def update_total_price!
+    update!(total_price: cart_items.reload.sum(&:total_price))
   end
 end
