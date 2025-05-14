@@ -21,6 +21,27 @@ RSpec.describe "/carts", type: :request do
       it 'updates the quantity of the existing item in the cart' do
         expect { subject }.to change { cart_item.reload.quantity }.by(2)
       end
+
+      it 'returns correct response' do
+        expected_response = {
+          id: cart.id,
+          products: [
+            {
+              id: product.id,
+              name: product.name,
+              quantity: 3,
+              unit_price: product.price,
+              total_price: product.price * 3
+            }
+          ],
+          total_price: product.price * 3
+        }.to_json
+
+        sign_in cart.user
+        post '/cart/add_item', params: { product_id: product.id, quantity: 2 }, as: :json
+
+        expect(response.body).to eq expected_response
+      end
     end
 
     context 'when the product is not in the cart' do
@@ -31,7 +52,7 @@ RSpec.describe "/carts", type: :request do
         post '/cart/add_item', params: { product_id: new_product.id, quantity: 2 }, as: :json
       end
 
-      it 'adds product to cart' do
+      it 'adds product to cart and returns correct response' do
         expected_response = {
           id: cart.id,
           products: [

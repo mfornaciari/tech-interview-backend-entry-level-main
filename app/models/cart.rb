@@ -5,7 +5,17 @@ class Cart < ApplicationRecord
 
   validates_numericality_of :total_price, greater_than_or_equal_to: 0
 
-  # TODO: lógica para marcar o carrinho como abandonado e remover se abandonado
+  def add_item(product_id:, quantity:)
+    item = cart_items.find_or_initialize_by(product_id: product_id)
+    if item.quantity.present?
+      item.quantity += quantity
+    else
+      item.quantity = quantity
+    end
+    item.save
+    item
+  end
+
   def mark_as_abandoned
     return if last_interaction_at > 3.hours.ago
 
