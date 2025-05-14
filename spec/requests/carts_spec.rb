@@ -126,8 +126,22 @@ RSpec.describe "/carts", type: :request do
 
         delete_request
 
-        expect(cart.reload.cart_items).to be_empty
+        expect(cart.cart_items).to be_empty
         expect(response.body).to eq(expected_response)
+      end
+    end
+
+    context 'when the product is not in the cart' do
+      let(:product) { create(:product) }
+      let(:other_product) { create(:product, name: 'Other product' ) }
+      let!(:cart_item) { create(:cart_item, cart: cart, product: other_product, quantity: 2) }
+
+      it 'returns error message' do
+        delete_request
+
+        expect(cart.cart_items).to contain_exactly(cart_item)
+        expect(response.status).to eq 404
+        expect(response.body).to eq({ error: "Product #{product.id} not found in cart" }.to_json)
       end
     end
   end

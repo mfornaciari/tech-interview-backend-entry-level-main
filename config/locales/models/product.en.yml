@@ -1,0 +1,3 @@
+en:
+  product:
+    not_found: Product %{id} not found in cart
