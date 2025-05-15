@@ -20,10 +20,9 @@ RSpec.describe Cart, type: :model do
       let(:new_product) { create(:product, name: 'New product') }
       let(:item_params) { { product_id: new_product.id, quantity: 2 } }
 
-      it 'creates item' do
-        result = add_item
+      it 'creates item and returns true' do
+        expect(add_item).to be true
 
-        expect(result.attributes).to include(item_params.stringify_keys)
         expect(cart.reload.cart_items).to contain_exactly(
           an_object_having_attributes(**existing_cart_item.attributes),
           an_object_having_attributes(**item_params)
@@ -34,15 +33,9 @@ RSpec.describe Cart, type: :model do
     context 'when product is already in the cart' do
       let(:item_params) { { product_id: existing_product.id, quantity: 2 } }
 
-      it 'updates item quantity' do
-        result = add_item
+      it 'updates item quantity and returns true' do
+        expect(add_item).to be true
 
-        expect(result.attributes).to include(
-          {
-            product_id: existing_product.id,
-            quantity: existing_cart_item.quantity + item_params[:quantity]
-          }.stringify_keys
-        )
         expect(cart.reload.cart_items).to contain_exactly(
           an_object_having_attributes(
             product_id: existing_product.id,

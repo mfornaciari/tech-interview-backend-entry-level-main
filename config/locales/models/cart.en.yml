@@ -1,0 +1,4 @@
+en:
+  cart:
+    not_found: Cart %{id} not found
+    id_not_sent: No cart ID sent

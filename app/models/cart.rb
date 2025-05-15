@@ -1,6 +1,4 @@
 class Cart < ApplicationRecord
-  belongs_to :user
-
   has_many :cart_items
 
   validates_numericality_of :total_price, greater_than_or_equal_to: 0
@@ -8,8 +6,9 @@ class Cart < ApplicationRecord
   def add_item(product_id:, quantity:)
     item = cart_items.find_or_initialize_by(product_id: product_id)
     item.quantity = item.quantity.present? ? item.quantity + quantity : quantity
-    item.save!
-    item
+    item.save
+  rescue StandardError
+    false
   end
 
   def mark_as_abandoned
@@ -27,7 +26,7 @@ class Cart < ApplicationRecord
 
   def remove_product(id)
     item = cart_items.find_by(product_id: id)
-    return false if item.nil?
+    return false if item.blank?
 
     item.destroy
     true
