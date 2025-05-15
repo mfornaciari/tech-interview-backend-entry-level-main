@@ -1,10 +1,8 @@
 class CartsController < ApplicationController
-  def show
-    return render status: 422, json: { error: I18n.t('cart.id_not_sent') } if session[:cart_id].blank?
+  before_action :validate_cart_id, only: %i[show destroy add_item]
+  before_action :find_existing_cart, only: %i[show destroy add_item]
 
-    @cart = Cart.find_by(id: session[:cart_id])
-    render status: 404, json: { error: I18n.t('cart.not_found', id: session[:cart_id]) } if @cart.blank?
-  end
+  def show; end
 
   def create
     @cart = Cart.find_or_initialize_by(id: session[:cart_id])
@@ -14,20 +12,27 @@ class CartsController < ApplicationController
   end
 
   def destroy
-    @cart = Cart.find_by(id: session[:cart_id])
     unless @cart.remove_product(params[:product_id])
       return render status: :not_found, json: { error: I18n.t('product.not_found', id: params[:product_id]) }
     end
   end
 
   def add_item
-    @cart = Cart.find_by(id: session[:cart_id])
     @cart.add_item(**item_params.to_h.symbolize_keys)
   end
 
   private
 
+  def find_existing_cart
+    @cart = Cart.find_by(id: session[:cart_id])
+    render status: 404, json: { error: I18n.t('cart.not_found', id: session[:cart_id]) } if @cart.blank?
+  end
+
   def item_params
     params.permit(:product_id, :quantity)
+  end
+
+  def validate_cart_id
+    render status: 422, json: { error: I18n.t('cart.id_not_sent') } if session[:cart_id].blank?
   end
 end
