@@ -1,5 +1,6 @@
 class CartsController < ApplicationController
   before_action :validate_cart_id, only: %i[show destroy add_item]
+  before_action :validate_product, only: %i[create add_item]
   before_action :find_existing_cart, only: %i[show destroy add_item]
 
   def show; end
@@ -13,7 +14,7 @@ class CartsController < ApplicationController
 
   def destroy
     unless @cart.remove_product(params[:product_id])
-      return render status: :not_found, json: { error: I18n.t('product.not_found', id: params[:product_id]) }
+      return render status: :not_found, json: { error: I18n.t('product.not_in_cart', id: params[:product_id]) }
     end
   end
 
@@ -34,5 +35,11 @@ class CartsController < ApplicationController
 
   def validate_cart_id
     render status: 422, json: { error: I18n.t('cart.id_not_sent') } if session[:cart_id].blank?
+  end
+
+  def validate_product
+    unless Product.where(id: params[:product_id]).exists?
+      render status: 404, json: { error: I18n.t('product.not_found', id: params[:product_id]) }
+    end
   end
 end

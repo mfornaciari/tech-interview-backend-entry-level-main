@@ -59,71 +59,88 @@ describe CartsController, type: :controller do
   end
 
   describe '#create' do
-    subject(:post_request) { post :create, params: { product_id: product.id, quantity: 2 }, as: :json }
+    subject(:post_request) { post :create, params: { product_id: product_id, quantity: 2 }, as: :json }
 
     let(:product) { create(:product) }
 
     before { freeze_time }
 
-    context 'when cart does not exist' do
-      it 'creates cart, adds cart ID to session and returns correct response' do
-        travel_to(1.second.ago) do
-          expect { post_request }.to change(Cart, :count).from(0).to(1)
-        end
+    context 'when product ID is valid' do
+      let(:product_id) { product.id }
 
-        created_cart = Cart.last
-        expect(created_cart.last_interaction_at).to eq(1.second.ago)
-        expect(created_cart.cart_items)
-          .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 2))
-        expect(session[:cart_id]).to eq(created_cart.id)
-        expect(response.status).to eq 201
-        expected_response = {
-          id: created_cart.id,
-          products: [
-            {
-              id: product.id,
-              name: 'Product',
-              quantity: 2,
-              unit_price: '10.0',
-              total_price: '20.0'
-            }
-          ],
-          total_price: '20.0'
-        }.to_json
-        expect(response.body).to eq(expected_response)
+      context 'and cart does not exist' do
+        it 'creates cart, adds cart ID to session and returns correct response' do
+          travel_to(1.second.ago) do
+            expect { post_request }.to change(Cart, :count).from(0).to(1)
+          end
+
+          created_cart = Cart.last
+          expect(created_cart.last_interaction_at).to eq(1.second.ago)
+          expect(created_cart.cart_items)
+            .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 2))
+          expect(session[:cart_id]).to eq(created_cart.id)
+          expect(response.status).to eq 201
+          expected_response = {
+            id: created_cart.id,
+            products: [
+              {
+                id: product.id,
+                name: 'Product',
+                quantity: 2,
+                unit_price: '10.0',
+                total_price: '20.0'
+              }
+            ],
+            total_price: '20.0'
+          }.to_json
+          expect(response.body).to eq(expected_response)
+        end
+      end
+
+      context 'and cart already exists' do
+        let(:cart) { create(:shopping_cart) }
+        let!(:cart_item) { create(:cart_item, cart: cart, product: product, quantity: 1) }
+
+        before { session[:cart_id] = cart.id }
+
+        it 'updates existing cart' do
+          travel_to(1.second.ago) do
+            expect { post_request }.not_to change(Cart, :count)
+          end
+
+          expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+          expect(cart.cart_items)
+            .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
+          expect(session[:cart_id]).to eq(cart.id)
+          expect(response.status).to eq 200
+          expected_response = {
+            id: cart.id,
+            products: [
+              {
+                id: product.id,
+                name: 'Product',
+                quantity: 3,
+                unit_price: '10.0',
+                total_price: '30.0'
+              }
+            ],
+            total_price: '30.0'
+          }.to_json
+          expect(response.body).to eq(expected_response)
+        end
       end
     end
 
-    context 'when cart already exists' do
-      let(:cart) { create(:shopping_cart) }
-      let!(:cart_item) { create(:cart_item, cart: cart, product: product, quantity: 1) }
+    context 'when product ID is not valid' do
+      let(:product_id) { product.id + 1 }
 
-      before { session[:cart_id] = cart.id }
-
-      it 'updates existing cart' do
+      it 'returns 404 and an error message' do
         travel_to(1.second.ago) do
-          expect { post_request }.not_to change(Cart, :count)
+          expect { post_request }.to not_change(Cart, :count).and not_change(CartItem, :count)
         end
 
-        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
-        expect(cart.cart_items)
-          .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
-        expect(session[:cart_id]).to eq(cart.id)
-        expect(response.status).to eq 200
-        expected_response = {
-          id: cart.id,
-          products: [
-            {
-              id: product.id,
-              name: 'Product',
-              quantity: 3,
-              unit_price: '10.0',
-              total_price: '30.0'
-            }
-          ],
-          total_price: '30.0'
-        }.to_json
-        expect(response.body).to eq(expected_response)
+        expect(response.status).to eq(404)
+        expect(response.body).to eq({ error: "Product #{product_id} not found" }.to_json)
       end
     end
   end
@@ -165,7 +182,7 @@ describe CartsController, type: :controller do
           let(:other_product) { create(:product, name: 'Other product' ) }
           let!(:cart_item) { create(:cart_item, cart: cart, product: other_product, quantity: 2) }
 
-          it 'returns error message' do
+          it 'returns 404 and an error message' do
             travel_to(1.second.ago) { delete_request }
 
             expect(cart.reload.last_interaction_at).to eq(Time.current)
@@ -205,7 +222,7 @@ describe CartsController, type: :controller do
   end
 
   describe '#add_item' do
-    subject(:post_request) { post :add_item, params: { product_id: product.id, quantity: 2 }, as: :json}
+    subject(:post_request) { post :add_item, params: { product_id: product_id, quantity: 2 }, as: :json}
 
     let(:cart) { create(:shopping_cart) }
     let(:product) { create(:product, name: 'Product', price: 10.0) }
@@ -215,96 +232,116 @@ describe CartsController, type: :controller do
     context 'when session has cart_id' do
       before { session[:cart_id] = cart_id }
 
-      context 'and cart exists' do
-        let(:cart_id) { cart.id }
+      context 'and product_id is valid' do
+        let(:product_id) { product.id}
 
-        context 'and product is in the cart' do
-          before { create(:cart_item, cart: cart, product: product, quantity: 1) }
+        context 'and cart exists' do
+          let(:cart_id) { cart.id }
 
-          it 'updates cart without creating new cart item and returns correct response' do
-            travel_to(1.second.ago) do
-              expect { post_request }.not_to change(cart.cart_items, :count)
+          context 'and product is in the cart' do
+            before { create(:cart_item, cart: cart, product: product, quantity: 1) }
+
+            it 'updates cart without creating new cart item and returns correct response' do
+              travel_to(1.second.ago) do
+                expect { post_request }.not_to change(cart.cart_items, :count)
+              end
+
+              expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+              expect(cart.cart_items)
+                .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
+              expect(response.status).to eq(200)
+              expected_response = {
+                id: cart.id,
+                products: [
+                  {
+                    id: product.id,
+                    name: 'Product',
+                    quantity: 3,
+                    unit_price: '10.0',
+                    total_price: '30.0'
+                  }
+                ],
+                total_price: '30.0'
+              }.to_json
+              expect(response.body).to eq(expected_response)
             end
+          end
 
-            expect(cart.reload.last_interaction_at).to eq(1.second.ago)
-            expect(cart.cart_items)
-              .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
-            expect(response.status).to eq(200)
-            expected_response = {
-              id: cart.id,
-              products: [
-                {
-                  id: product.id,
-                  name: 'Product',
-                  quantity: 3,
-                  unit_price: '10.0',
-                  total_price: '30.0'
-                }
-              ],
-              total_price: '30.0'
-            }.to_json
-            expect(response.body).to eq(expected_response)
+          context 'and product is not in the cart' do
+            let(:other_product) { create(:product, name: 'Other product', price: 5.0) }
+
+            before { create(:cart_item, cart: cart, product: other_product, quantity: 1) }
+
+            it 'creates new cart item and returns correct response' do
+              travel_to(1.second.ago) do
+                expect { post_request }.to change(cart.cart_items, :count).from(1).to(2)
+              end
+
+              expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+              expect(cart.cart_items)
+                .to contain_exactly(
+                  an_object_having_attributes(product_id: other_product.id, quantity: 1),
+                  an_object_having_attributes(product_id: product.id, quantity: 2),
+                )
+              expect(response.status).to eq(200)
+              expected_response = {
+                id: cart.id,
+                products: [
+                  {
+                    id: other_product.id,
+                    name: 'Other product',
+                    quantity: 1,
+                    unit_price: '5.0',
+                    total_price: '5.0'
+                  },
+                  {
+                    id: product.id,
+                    name: 'Product',
+                    quantity: 2,
+                    unit_price: '10.0',
+                    total_price: '20.0'
+                  },
+                ],
+                total_price: '25.0'
+              }.to_json
+              expect(response.body).to eq(expected_response)
+            end
           end
         end
 
-        context 'and product is not in the cart' do
-          let(:other_product) { create(:product, name: 'Other product', price: 5.0) }
+        context 'and cart does not exist' do
+          let(:cart_id) { cart.id + 1 }
 
-          before { create(:cart_item, cart: cart, product: other_product, quantity: 1) }
-
-          it 'creates new cart item and returns correct response' do
+          it 'returns 404 and an error message' do
             travel_to(1.second.ago) do
-              expect { post_request }.to change(cart.cart_items, :count).from(1).to(2)
+              expect { post_request }.not_to change(CartItem, :count)
             end
 
-            expect(cart.reload.last_interaction_at).to eq(1.second.ago)
-            expect(cart.cart_items)
-              .to contain_exactly(
-                an_object_having_attributes(product_id: other_product.id, quantity: 1),
-                an_object_having_attributes(product_id: product.id, quantity: 2),
-              )
-            expect(response.status).to eq(200)
-            expected_response = {
-              id: cart.id,
-              products: [
-                {
-                  id: other_product.id,
-                  name: 'Other product',
-                  quantity: 1,
-                  unit_price: '5.0',
-                  total_price: '5.0'
-                },
-                {
-                  id: product.id,
-                  name: 'Product',
-                  quantity: 2,
-                  unit_price: '10.0',
-                  total_price: '20.0'
-                },
-              ],
-              total_price: '25.0'
-            }.to_json
-            expect(response.body).to eq(expected_response)
+            expect(cart.reload.last_interaction_at).to eq(Time.current)
+            expect(response.status).to eq(404)
+            expect(response.body).to eq({ error: "Cart #{cart_id} not found" }.to_json)
           end
         end
       end
 
-      context 'and cart does not exist' do
-        let(:cart_id) { cart.id + 1 }
+      context 'and product_id is not valid' do
+        let(:product_id) { product.id + 1 }
+        let(:cart_id) { cart.id }
 
         it 'returns 404 and an error message' do
           travel_to(1.second.ago) do
-            expect { post_request }.not_to change(CartItem, :count)
+            expect { post_request }.to not_change(Cart, :count).and not_change(CartItem, :count)
           end
 
-          expect(cart.reload.last_interaction_at).to eq(Time.current)
           expect(response.status).to eq(404)
-          expect(response.body).to eq({ error: "Cart #{cart_id} not found" }.to_json)
+          expect(response.body).to eq({ error: "Product #{product_id} not found" }.to_json)
         end
       end
     end
 
     context 'when session does not have cart_id' do
+      let(:product_id) { product.id }
+
       it 'returns 422 and an error message' do
         travel_to(1.second.ago) do
           expect { post_request }.not_to change(CartItem, :count)

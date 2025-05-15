@@ -1,3 +1,4 @@
 en:
   product:
-    not_found: Product %{id} not found in cart
+    not_found: Product %{id} not found
+    not_in_cart: Product %{id} not found in cart
