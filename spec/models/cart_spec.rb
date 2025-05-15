@@ -2,6 +2,12 @@ require 'rails_helper'
 
 RSpec.describe Cart, type: :model do
   context 'when validating' do
+
+    it { is_expected.to validate_presence_of(:last_interaction_at) }
+
+    it { is_expected.to allow_values(true, false).for(:abandoned) }
+    it {is_expected.not_to allow_values(nil, '').for(:abandoned) }
+
     it 'validates numericality of total_price' do
       cart = described_class.new(total_price: -1)
       expect(cart.valid?).to be_falsey

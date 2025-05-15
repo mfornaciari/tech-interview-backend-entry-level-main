@@ -1,7 +1,9 @@
 class Cart < ApplicationRecord
   has_many :cart_items, dependent: :destroy
 
-  validates_numericality_of :total_price, greater_than_or_equal_to: 0
+  validates :abandoned, inclusion: { in: [true, false] }
+  validates :last_interaction_at, presence: true
+  validates :total_price, numericality: { greater_than_or_equal_to: 0 }
 
   def add_item!(product_id:, quantity:)
     item = cart_items.find_or_initialize_by(product_id: product_id)

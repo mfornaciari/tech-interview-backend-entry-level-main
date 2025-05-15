@@ -19,8 +19,6 @@ services:
   sidekiq:
     build: .
     command: bundle exec sidekiq -C config/sidekiq.yml
-    volumes:
-      - sidekiq_bundle_cache:/usr/local/bundle
     depends_on:
       db:
         condition: service_started
@@ -31,8 +29,6 @@ services:
       - REDIS_URL=redis://redis:6379/0
   web:
     build: .
-    volumes:
-      - rubygems:/usr/local/bundle
     depends_on:
       db:
         condition: service_started
@@ -57,5 +53,3 @@ services:
 volumes:
   postgres13:
   redis_data:
-  rubygems:
-  sidekiq_bundle_cache:
