@@ -63,11 +63,16 @@ describe CartsController, type: :controller do
 
     let(:product) { create(:product) }
 
+    before { freeze_time }
+
     context 'when cart does not exist' do
       it 'creates cart, adds cart ID to session and returns correct response' do
-        expect { post_request }.to change(Cart, :count).from(0).to(1)
+        travel_to(1.second.ago) do
+          expect { post_request }.to change(Cart, :count).from(0).to(1)
+        end
 
         created_cart = Cart.last
+        expect(created_cart.last_interaction_at).to eq(1.second.ago)
         expect(created_cart.cart_items)
           .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 2))
         expect(session[:cart_id]).to eq(created_cart.id)
@@ -96,9 +101,12 @@ describe CartsController, type: :controller do
       before { session[:cart_id] = cart.id }
 
       it 'updates existing cart' do
-        expect { post_request }.not_to change(Cart, :count)
+        travel_to(1.second.ago) do
+          expect { post_request }.not_to change(Cart, :count)
+        end
 
-        expect(cart.reload.cart_items)
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items)
           .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
         expect(session[:cart_id]).to eq(cart.id)
         expect(response.status).to eq 200
@@ -126,7 +134,10 @@ describe CartsController, type: :controller do
     let(:cart) { create(:shopping_cart) }
     let(:product) { create(:product) }
 
-    before { session[:cart_id] = cart.id }
+    before do
+      freeze_time
+      session[:cart_id] = cart.id
+    end
 
     context 'when product is in the cart' do
       before { create(:cart_item, cart: cart, product: product, quantity: 2) }
@@ -138,9 +149,10 @@ describe CartsController, type: :controller do
           total_price: '0.0'
         }.to_json
 
-        delete_request
+        travel_to(1.second.ago) { delete_request }
 
-        expect(cart.reload.cart_items).to be_empty
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items).to be_empty
         expect(response.status).to eq(200)
         expect(response.body).to eq(expected_response)
       end
@@ -151,9 +163,10 @@ describe CartsController, type: :controller do
       let!(:cart_item) { create(:cart_item, cart: cart, product: other_product, quantity: 2) }
 
       it 'returns error message' do
-        delete_request
+        travel_to(1.second.ago) { delete_request }
 
-        expect(cart.reload.cart_items).to contain_exactly(cart_item)
+        expect(cart.reload.last_interaction_at).to eq(Time.current)
+        expect(cart.cart_items).to contain_exactly(cart_item)
         expect(response.status).to eq(404)
         expect(response.body).to eq({ error: "Product #{product.id} not found in cart" }.to_json)
       end
@@ -166,15 +179,21 @@ describe CartsController, type: :controller do
     let(:cart) { create(:shopping_cart) }
     let(:product) { create(:product, name: 'Product', price: 10.0) }
 
-    before { session[:cart_id] = cart.id }
+    before do
+      freeze_time
+      session[:cart_id] = cart.id
+    end
 
     context 'when product is in the cart' do
       before { create(:cart_item, cart: cart, product: product, quantity: 1) }
 
       it 'updates cart without creating new cart item and returns correct response' do
-        expect { post_request }.not_to change(cart.cart_items, :count)
+        travel_to(1.second.ago) do
+          expect { post_request }.not_to change(cart.cart_items, :count)
+        end
 
-        expect(cart.reload.cart_items)
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items)
           .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 3))
         expect(response.status).to eq(200)
         expected_response = {
@@ -200,9 +219,12 @@ describe CartsController, type: :controller do
       before { create(:cart_item, cart: cart, product: other_product, quantity: 1) }
 
       it 'creates new cart item and returns correct response' do
-        expect { post_request }.to change(cart.cart_items, :count).from(1).to(2)
+        travel_to(1.second.ago) do
+          expect { post_request }.to change(cart.cart_items, :count).from(1).to(2)
+        end
 
-        expect(cart.reload.cart_items)
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items)
           .to contain_exactly(
             an_object_having_attributes(product_id: other_product.id, quantity: 1),
             an_object_having_attributes(product_id: product.id, quantity: 2),

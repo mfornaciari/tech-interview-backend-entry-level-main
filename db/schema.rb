@@ -28,7 +28,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_13_174639) do
     t.decimal "total_price", precision: 17, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.datetime "last_interaction_at", default: "2025-05-15 03:05:27", null: false
+    t.datetime "last_interaction_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.boolean "abandoned", default: false, null: false
   end
 

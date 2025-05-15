@@ -16,14 +16,17 @@ RSpec.describe Cart, type: :model do
     let!(:existing_cart_item) { create(:cart_item, cart: cart, product: existing_product, quantity: 1) }
     let(:existing_product) { create(:product) }
 
+    before { freeze_time }
+
     context 'when product is not in the cart' do
       let(:new_product) { create(:product, name: 'New product') }
       let(:item_params) { { product_id: new_product.id, quantity: 2 } }
 
       it 'creates item and returns true' do
-        expect(add_item).to be true
+        travel_to(1.second.ago) { expect(add_item).to be true }
 
-        expect(cart.reload.cart_items).to contain_exactly(
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items).to contain_exactly(
           an_object_having_attributes(**existing_cart_item.attributes),
           an_object_having_attributes(**item_params)
         )
@@ -34,9 +37,10 @@ RSpec.describe Cart, type: :model do
       let(:item_params) { { product_id: existing_product.id, quantity: 2 } }
 
       it 'updates item quantity and returns true' do
-        expect(add_item).to be true
+        travel_to(1.second.ago) { expect(add_item).to be true }
 
-        expect(cart.reload.cart_items).to contain_exactly(
+        expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+        expect(cart.cart_items).to contain_exactly(
           an_object_having_attributes(
             product_id: existing_product.id,
             quantity: existing_cart_item.quantity + item_params[:quantity]
@@ -106,13 +110,18 @@ RSpec.describe Cart, type: :model do
     let(:cart) { create(:shopping_cart) }
     let(:product) { create(:product) }
 
+    before { freeze_time }
+
     context 'when given product ID matches the product_id of an associated cart item' do
       let!(:cart_item) { create(:cart_item, cart: cart, product: product) }
 
       it 'removes cart item and returns true' do
-        result = remove_product
+        travel_to(1.second.ago) do
+          result = remove_product
 
-        expect(result).to be true
+          expect(result).to be true
+        end
+        expect(cart.last_interaction_at).to eq(1.second.ago)
         expect(cart.cart_items).to be_empty
       end
     end
@@ -122,9 +131,12 @@ RSpec.describe Cart, type: :model do
       let!(:cart_item) { create(:cart_item, cart: cart, product: other_product) }
 
       it 'does not change cart items and returns false' do
-        result = remove_product
+        travel_to(1.second.ago) do
+          result = remove_product
 
-        expect(result).to be false
+          expect(result).to be false
+        end
+        expect(cart.last_interaction_at).to eq(Time.current)
         expect(cart.cart_items).to contain_exactly(cart_item)
       end
     end

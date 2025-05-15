@@ -32,7 +32,7 @@ class Cart < ApplicationRecord
     true
   end
 
-  def update_total_price!
-    update!(total_price: cart_items.reload.sum(&:total_price))
+  def update_data!
+    update!(last_interaction_at: Time.current, total_price: cart_items.reload.sum(&:total_price))
   end
 end
