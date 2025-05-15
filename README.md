@@ -11,7 +11,7 @@ API de e-commerce.
 ## Como executar os testes
 
 1. Certifique-se de ter o Docker instalado e configurado;
-2. Se estiver usando Docker 20.10.0 ou superior e, portanto, tiver acesso ao [Docker Compose V2](https://docs.docker.com/compose/releases/migrate/), execute `docker compose up test` no seu terminal. Caso contrário, execute `docker-compose up test`;
+2. Se estiver usando Docker 20.10.0 ou superior e, portanto, tiver acesso ao [Docker Compose V2](https://docs.docker.com/compose/releases/migrate/), execute `docker compose up test` no seu terminal. Caso contrário, execute `docker-compose up test`.
 
 ## Como acessar a Web UI do Sidekiq
 
