@@ -3,23 +3,28 @@ class CartsController < ApplicationController
   before_action :validate_product, only: %i[create add_item]
   before_action :find_existing_cart, only: %i[show destroy add_item]
 
+  rescue_from StandardError, with: :render_generic_error
+
   def show; end
 
   def create
     @cart = Cart.find_or_initialize_by(id: session[:cart_id])
     response.status = 201 unless @cart.persisted?
-    @cart.add_item(**item_params.to_h.symbolize_keys)
+    @cart.add_item!(**item_params)
     session[:cart_id] = @cart.id
   end
 
   def destroy
-    unless @cart.remove_product(params[:product_id])
+    item = @cart.cart_items.find_by(product_id: params[:product_id])
+    if item.blank?
       return render status: :not_found, json: { error: I18n.t('product.not_in_cart', id: params[:product_id]) }
     end
+
+    item.destroy!
   end
 
   def add_item
-    @cart.add_item(**item_params.to_h.symbolize_keys)
+    @cart.add_item!(**item_params)
   end
 
   private
@@ -30,7 +35,11 @@ class CartsController < ApplicationController
   end
 
   def item_params
-    params.permit(:product_id, :quantity)
+    params.permit(:product_id, :quantity).to_h.symbolize_keys
+  end
+
+  def render_generic_error
+    render status: :internal_server_error, json: { error: I18n.t('error.generic') }
   end
 
   def validate_cart_id

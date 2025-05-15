@@ -129,6 +129,24 @@ describe CartsController, type: :controller do
           expect(response.body).to eq(expected_response)
         end
       end
+
+      context 'and an error happens' do
+        before do
+          cart = Cart.new
+          allow(Cart).to receive(:find_or_initialize_by).and_return(cart)
+          allow(cart).to receive(:add_item!).and_raise(StandardError)
+        end
+
+        it 'returns 500 and an error message' do
+          travel_to(1.second.ago) do
+            expect { post_request }.to not_change(Cart, :count).and not_change(CartItem, :count)
+          end
+
+          expect(session[:cart_id]).to be_nil
+          expect(response.status).to eq 500
+          expect(response.body).to eq({ error: 'An error happened. Please try again' }.to_json)
+        end
+      end
     end
 
     context 'when product ID is not valid' do
@@ -159,22 +177,42 @@ describe CartsController, type: :controller do
       context 'and cart exists' do
         let(:cart_id) { cart.id }
 
-        context 'and product is in the cart' do
-          before { create(:cart_item, cart: cart, product: product, quantity: 2) }
+        context 'and the product is in the cart' do
+          let!(:cart_item) { create(:cart_item, cart: cart, product: product, quantity: 2) }
 
-          it 'removes product from cart and returns correct response' do
-            expected_response = {
-              id: cart.id,
-              products: [],
-              total_price: '0.0'
-            }.to_json
+          context 'and no errors happen' do
+            it 'removes product from cart and returns correct response' do
+              expected_response = {
+                id: cart.id,
+                products: [],
+                total_price: '0.0'
+              }.to_json
 
-            travel_to(1.second.ago) { delete_request }
+              travel_to(1.second.ago) { delete_request }
 
-            expect(cart.reload.last_interaction_at).to eq(1.second.ago)
-            expect(cart.cart_items).to be_empty
-            expect(response.status).to eq(200)
-            expect(response.body).to eq(expected_response)
+              expect(cart.reload.last_interaction_at).to eq(1.second.ago)
+              expect(cart.cart_items).to be_empty
+              expect(response.status).to eq(200)
+              expect(response.body).to eq(expected_response)
+            end
+          end
+
+          context 'and removing the item fails' do
+            before do
+              allow(Cart).to receive(:find_by).with(id: cart_id).and_return(cart)
+              allow(cart.cart_items).to receive(:find_by).with(product_id: product.id.to_s).and_return(cart_item)
+              allow(cart_item).to receive(:destroy!).and_raise(StandardError)
+            end
+
+            it 'returns 500 and an error message' do
+              travel_to(1.second.ago) { delete_request }
+
+              expect(cart.reload.last_interaction_at).to eq(Time.current)
+              expect(cart.cart_items)
+                .to contain_exactly(an_object_having_attributes(product_id: product.id, quantity: 2))
+              expect(response.status).to eq(500)
+              expect(response.body).to eq({ error: 'An error happened. Please try again' }.to_json)
+            end
           end
         end
 
@@ -305,6 +343,23 @@ describe CartsController, type: :controller do
                 total_price: '25.0'
               }.to_json
               expect(response.body).to eq(expected_response)
+            end
+          end
+
+          context 'and an error happens' do
+            before do
+              allow(Cart).to receive(:find_by).and_return(cart)
+              allow(cart).to receive(:add_item!).and_raise(StandardError)
+            end
+
+            it 'returns 500 and an error message' do
+              travel_to(1.second.ago) do
+                expect { post_request }.to not_change(Cart, :count).and not_change(CartItem, :count)
+              end
+
+              expect(session[:cart_id]).to eq(cart_id)
+              expect(response.status).to eq 500
+              expect(response.body).to eq({ error: 'An error happened. Please try again' }.to_json)
             end
           end
         end
