@@ -13,15 +13,16 @@ class Cart < ApplicationRecord
   end
 
   def mark_as_abandoned
-    return if last_interaction_at > 3.hours.ago
+    return false if last_interaction_at > 3.hours.ago
 
     update(abandoned: true)
   end
 
   def remove_if_abandoned
-    return if last_interaction_at > 7.days.ago
+    return false if last_interaction_at > 7.days.ago
 
     destroy
+    true
   end
 
   def remove_product(id)

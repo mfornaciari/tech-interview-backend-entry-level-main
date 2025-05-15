@@ -60,6 +60,24 @@ RSpec.describe Cart, type: :model do
       shopping_cart.update(last_interaction_at: 3.hours.ago)
       expect { shopping_cart.mark_as_abandoned }.to change { shopping_cart.abandoned? }.from(false).to(true)
     end
+
+    it 'returns true if shopping cart was marked as abandoned' do
+      shopping_cart.update(last_interaction_at: 3.hours.ago)
+
+      expect(shopping_cart.mark_as_abandoned).to be true
+    end
+
+    context 'when the shopping cart has not been inactive for long enough' do
+      let(:shopping_cart) { create(:shopping_cart, last_interaction_at: 179.minutes.ago) }
+
+      it 'does not mark the cart as abandoned' do
+        expect { shopping_cart.mark_as_abandoned }.not_to change { shopping_cart.abandoned? }
+      end
+
+      it 'returns false' do
+        expect(shopping_cart.mark_as_abandoned).to be false
+      end
+    end
   end
 
   describe 'remove_if_abandoned' do
@@ -68,6 +86,24 @@ RSpec.describe Cart, type: :model do
     it 'removes the shopping cart if abandoned for a certain time' do
       shopping_cart.mark_as_abandoned
       expect { shopping_cart.remove_if_abandoned }.to change { Cart.count }.by(-1)
+    end
+
+    it 'returns true if cart was removed' do
+      shopping_cart.mark_as_abandoned
+
+      expect(shopping_cart.remove_if_abandoned).to be true
+    end
+
+    context 'when shopping cart has not been abandoned for long enough' do
+      let(:shopping_cart) { create(:shopping_cart, last_interaction_at: 167.hours.ago, abandoned: true) }
+
+      it 'does not remove the cart' do
+        expect { shopping_cart.remove_if_abandoned }.not_to change { shopping_cart.abandoned? }
+      end
+
+      it 'returns false' do
+        expect(shopping_cart.remove_if_abandoned).to be false
+      end
     end
   end
 
