@@ -22,9 +22,12 @@ services:
     volumes:
       - sidekiq_bundle_cache:/usr/local/bundle
     depends_on:
+      db:
+        condition: service_started
       redis:
         condition: service_started
     environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/store_development
       - REDIS_URL=redis://redis:6379/0
   web:
     build: .
